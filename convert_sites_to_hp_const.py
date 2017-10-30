@@ -2,7 +2,7 @@
 #
 # convert_sites_to_hp_const.py
 
-'''convert_sites_to_hp_const.py  last updated 2017-10-03
+'''convert_sites_to_hp_const.py  last updated 2017-10-30
 convert tabular heteropecilly data to include constant alignment sites
 
 convert_sites_to_hp_const.py -p hp_by_site.tab -a full_alignment.aln
@@ -31,7 +31,20 @@ def read_tabular_hp(hptabular):
 	print >> sys.stderr, "# Found heteropecilly for {} sites".format( len(hpdict) ), time.asctime()
 	return hpdict
 
-def full_alignment_hp(alignfile, alignformat, hpdict, makefasta):
+def read_raw_hp(rawhptabular):
+	'''read raw heteropecilly results and return a dict where keys are position and value is lnPIP'''
+	rawhpdict = {}
+	print >> sys.stderr, "# Reading raw heteropecilly by site from {}".format(rawhptabular), time.asctime()
+	for line in open(rawhptabular,'r'):
+		line = line.strip()
+		if line and line[0]!="#": # ignore blank and comment lines
+			pos, pip, lnpip = line.split('\t')
+			pos = int(pos)+1 # adjust position index
+			rawhpdict[pos] = lnpip[0:5] # keep lnPIP as string, take 2 or 3 decimal places
+	print >> sys.stderr, "# Found heteropecilly for {} sites".format( len(rawhpdict) ), time.asctime()
+	return rawhpdict
+
+def full_alignment_hp(alignfile, alignformat, hpgrpdict, rawhpdict, makefasta):
 	print >> sys.stderr, "# Reading alignment from {}".format( alignfile )
 	alignment = AlignIO.read( alignfile, alignformat )
 
@@ -46,11 +59,17 @@ def full_alignment_hp(alignfile, alignformat, hpdict, makefasta):
 
 	constsiteoffset = 0 # initially trimmed and untrimmed begin at same site
 
+	if not makefasta: # make header line
+		print >> sys.stdout, "#site\tgroup\tlnPIP\tnumTaxa\tgaps\tmostCommon\tfreq"
+
 	for i in range(al_length):
 		alignment_column = alignment[:,i] # all letters per site
-		gapsbysite[i+1] = alignment_column.count("-")
+		numgaps = alignment_column.count("-")
+		gapsbysite[i+1] = numgaps
 		nogap_alignment_column = alignment_column.replace("-","").replace("X","") # excluding gaps
 		aa_counter = Counter( nogap_alignment_column )
+		mostcommonaa = aa_counter.most_common(1)[0][0]
+		lnPIP = "NA" # set default as NA, otherwise reassigned to value from dict
 
 		# to account for sites that are constant in the 90 taxa, but not the 97
 		holozoanumbers = [1 , 6 , 19 , 30 , 56 , 70 , 87] # seq number in alignment
@@ -72,22 +91,32 @@ def full_alignment_hp(alignfile, alignformat, hpdict, makefasta):
 				constsiteoffset -= 1 # decrement by 1, since full alignment is now ahead of trimmed
 			else:
 				# values should be integers from 0 to 9
-				index_to_hp[i+1] = int(hpdict.get(i+1+constsiteoffset,0))/10
-		else: # site is constant, mark as 10 so can be colored accordingly
+				index_to_hp[i+1] = int(hpgrpdict.get(i+1+constsiteoffset,0))/10
+				lnPIP = rawhpdict.get(i+1+constsiteoffset,0)
+		else: # site is constant, mark as 11 so can be colored accordingly
 			if makefasta:
 				index_to_hp[i+1] = "C"
 			else:
 				index_to_hp[i+1] = 11
-			constcounter[ aa_counter.most_common(1)[0][0] ] += 1
+
+			constcounter[ mostcommonaa ] += 1
 			constsiteoffset -= 1 # decrement by 1, since full alignment is now ahead of trimmed
+		if not makefasta:
+			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t{}".format( i+1, index_to_hp[i+1], lnPIP, len(nogap_alignment_column), numgaps, mostcommonaa, aa_counter.most_common(1)[0][1] )
+
 	print >> sys.stderr, "# Assigned values for {} sites".format( len(index_to_hp) )
 	totalconstsites = sum(constcounter.values())
 	print >> sys.stderr, "# Counted {} constant sites".format( totalconstsites )
-	if len(hpdict) + totalconstsites != al_length:
-		missingdatacount = al_length - totalconstsites - len(hpdict)
+
+	# check for sites constant in choanozoa but not holozoa
+	if len(hpgrpdict) + totalconstsites != al_length:
+		missingdatacount = al_length - totalconstsites - len(hpgrpdict)
 		print >> sys.stderr, "# WARNING COULD NOT ACCOUNT FOR {} SITES".format( missingdatacount )
+
+	# print number of constant sites for each AA
 	for k,v in constcounter.iteritems():
 		print >> sys.stderr, "{},{}".format(k,v)
+
 	return index_to_hp, gapsbysite
 
 def main(argv, wayout):
@@ -97,19 +126,17 @@ def main(argv, wayout):
 	parser.add_argument("-a","--alignment", help="full multiple sequence alignment", required=True)
 	parser.add_argument('-f','--format', default="fasta", help="alignment format [fasta]")
 	parser.add_argument('--fasta', action="store_true", help="print output as a fasta format line for alignments")
-	parser.add_argument('-p','--heteropecilly', help="tabular heteropecilly data file")
+	parser.add_argument('-p','--heteropecilly', help="tabular heteropecilly data file from combine_heteropecilly.py")
+	parser.add_argument('-P','--raw-PIP', help="tabular raw heteropecilly data file")
 	args = parser.parse_args(argv)
 
-	hpbysite = read_tabular_hp(args.heteropecilly)
-	hp_and_const_index, gapcounts = full_alignment_hp( args.alignment, args.format, hpbysite, args.fasta )
+	hpgroupsbysite = read_tabular_hp(args.heteropecilly)
+	lnhpdict = read_raw_hp(args.raw_PIP) if args.raw_PIP else {} # empty dict so default can be 0
+	hp_and_const_index, gapcounts = full_alignment_hp( args.alignment, args.format, hpgroupsbysite, lnhpdict, args.fasta )
 
 	if args.fasta:
 		hpstring = "".join( str(hp_and_const_index[k]) for k in sorted(hp_and_const_index.keys()) )
 		print >> sys.stdout, ">Heteropecilly_score\n{}".format( hpstring )
-	else:
-		for i in range(max(hp_and_const_index.keys())):
-			print >> sys.stdout, "{}\t{}\t{}".format( i+1, hp_and_const_index[i+1], gapcounts[i+1] )
-		#	print >> sys.stdout, "{}\t{}".format(k,v)
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)

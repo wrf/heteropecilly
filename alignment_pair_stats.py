@@ -2,7 +2,7 @@
 #
 # alignment_pair_stats.py created 2017-10-17
 
-'''alignment_pair_stats.py  last modified 2017-10-17
+'''alignment_pair_stats.py  last modified 2017-10-30
 
 alignment_pair_stats.py -a align_pairs/
 
@@ -36,12 +36,7 @@ def main(argv, wayout):
 		argv.append('-h')
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-a','--alignments', nargs="*", help="alignment files or directory")
-	parser.add_argument('-c',"--commands", help="name for optional output file of pdb_heteropecilly commands")
 	parser.add_argument('-f','--format', default="fasta", help="alignment format [fasta]")
-	parser.add_argument('-l','--length-cutoff', default=0.5, type=float, help="minimum length coverage for proteins [0.5]")
-	parser.add_argument('-s','--species', nargs="*", help="filter by one or more species")
-	parser.add_argument("-u","--uniprot", help="Uniprot data in text format")
-	parser.add_argument("-U","--filtered-uniprot", help="tabular information of filtered Uniprot data")
 	args = parser.parse_args(argv)
 
 	if os.path.isdir(args.alignments[0]):
