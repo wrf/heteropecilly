@@ -125,8 +125,8 @@ def main(argv, wayout):
 	parser.add_argument('-d','--directory', default="./blast_alignments", help="directory for new alignments [autonamed]")
 	parser.add_argument('--mafft', default="mafft", help="path to mafft binary [default is in PATH]")
 	parser.add_argument('-q','--query', help="fasta file of blast query proteins from supermatrix")
-	parser.add_argument('-s','--subject', help="fasta file of blast database proteins, reference set")
-	parser.add_argument('-r','--reference', help="fasta file of proteins from the alignment with gaps")
+	parser.add_argument('-s','--subject', help="fasta file of blast database proteins; this was the -db file for blastp")
+	parser.add_argument('-r','--reference', help="fasta file of proteins from the alignment with gaps, only needed if heteropecilly is computed")
 	parser.add_argument('-p','--heteropecilly', help="tabular heteropecilly data file")
 	args = parser.parse_args(argv)
 
@@ -144,9 +144,12 @@ def main(argv, wayout):
 	print >> sys.stderr, "# Reading sequences from {}".format(args.subject), time.asctime()
 	subjectdict = SeqIO.to_dict(SeqIO.parse(args.subject,"fasta"))
 	print >> sys.stderr, "# Counted {} sequences".format( len(subjectdict) ), time.asctime()
-	print >> sys.stderr, "# Reading sequences from {}".format(args.reference), time.asctime()
-	refdict = SeqIO.to_dict(SeqIO.parse(args.reference,"fasta"))
-	print >> sys.stderr, "# Counted {} sequences".format( len(refdict) ), time.asctime()
+	if args.reference:
+		print >> sys.stderr, "# Reading sequences from {}".format(args.reference), time.asctime()
+		refdict = SeqIO.to_dict(SeqIO.parse(args.reference,"fasta"))
+		print >> sys.stderr, "# Counted {} sequences".format( len(refdict) ), time.asctime()
+	else:
+		refdict = None
 
 	hpbysite = read_tabular_hp(args.heteropecilly) if args.heteropecilly else None
 
