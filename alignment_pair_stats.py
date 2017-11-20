@@ -2,7 +2,7 @@
 #
 # alignment_pair_stats.py created 2017-10-17
 
-'''alignment_pair_stats.py  last modified 2017-10-30
+'''alignment_pair_stats.py  last modified 2017-11-13
 
 alignment_pair_stats.py -a align_pairs/
 
@@ -29,7 +29,7 @@ def check_alignment_pair(alignfile, alignformat):
 	spanlength = int(trimmedspan[1]) - int(trimmedspan[0])
 	refprotlength = len( alignment[1].seq )
 	statstring = "{}\t{}\t{}\t{:.3f}\t{}\t{}\t{:.3f}\t{}".format( alignment[0].id , alignment[1].id , trimmedlength , 1.0*trimmedlength/refprotlength, trimmedspan , spanlength, 1.0*spanlength/refprotlength, refprotlength )
-	return statstring
+	return statstring, trimmedlength, refprotlength
 
 def main(argv, wayout):
 	if not len(argv):
@@ -53,9 +53,14 @@ def main(argv, wayout):
 
 	headerline = "partition\tprotID\ttrimmedLength\ttrimmedPercent\tspan\tspanLength\tspanPercent\trefProtLength"
 	print >> wayout, headerline
+	refsitesum = 0
+	trimsitesum = 0
 	for alignfile in alignmentfiles:
-		alignstats = check_alignment_pair(alignfile, args.format)
+		alignstats, trimsites, refsites = check_alignment_pair(alignfile, args.format)
+		refsitesum += refsites
+		trimsitesum += trimsites
 		print >> wayout, alignstats
+	print >> sys.stderr, "# Overall coverage is {} of {}, {:.3f} of reference sites".format( trimsitesum, refsitesum, 1.0*trimsitesum/refsitesum ), time.asctime()
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)
