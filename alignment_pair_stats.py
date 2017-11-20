@@ -37,6 +37,7 @@ def main(argv, wayout):
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter, description=__doc__)
 	parser.add_argument('-a','--alignments', nargs="*", help="alignment files or directory")
 	parser.add_argument('-f','--format', default="fasta", help="alignment format [fasta]")
+	parser.add_argument('-s','--sort', action="store_true", help="sort filenames before processing")
 	args = parser.parse_args(argv)
 
 	if os.path.isdir(args.alignments[0]):
@@ -47,6 +48,8 @@ def main(argv, wayout):
 		alignmentfiles = args.alignments
 	else:
 		raise OSError("ERROR: Unknown alignments, exiting")
+	if args.sort:
+		alignmentfiles = sorted(alignmentfiles, key=lambda x: int(re.search("(\d+)-(\d+)-",x).group(1)))
 
 	headerline = "partition\tprotID\ttrimmedLength\ttrimmedPercent\tspan\tspanLength\tspanPercent\trefProtLength"
 	print >> wayout, headerline
