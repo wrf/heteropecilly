@@ -60,13 +60,14 @@ def full_alignment_hp(alignfile, alignformat, hpgrpdict, rawhpdict, makefasta):
 	constsiteoffset = 0 # initially trimmed and untrimmed begin at same site
 
 	if not makefasta: # make header line
-		print >> sys.stdout, "#site\tgroup\tlnPIP\tnumTaxa\tgaps\tmostCommon\tfreq"
+		print >> sys.stdout, "#site\tgroup\tlnPIP\tnumTaxa\tgaps\tmostCommon\tfreq\totherCount"
 
 	for i in range(al_length):
 		alignment_column = alignment[:,i] # all letters per site
 		numgaps = alignment_column.count("-")
 		gapsbysite[i+1] = numgaps
 		nogap_alignment_column = alignment_column.replace("-","").replace("X","") # excluding gaps
+		num_nogap_taxa = len(nogap_alignment_column)
 		aa_counter = Counter( nogap_alignment_column )
 		mostcommonaa = aa_counter.most_common(1)[0][0]
 		lnPIP = "NA" # set default as NA, otherwise reassigned to value from dict
@@ -102,7 +103,8 @@ def full_alignment_hp(alignfile, alignformat, hpgrpdict, rawhpdict, makefasta):
 			constcounter[ mostcommonaa ] += 1
 			constsiteoffset -= 1 # decrement by 1, since full alignment is now ahead of trimmed
 		if not makefasta:
-			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t{}".format( i+1, index_to_hp[i+1], lnPIP, len(nogap_alignment_column), numgaps, mostcommonaa, aa_counter.most_common(1)[0][1] )
+			mostcommoncount = aa_counter.most_common(1)[0][1]
+			print >> sys.stdout, "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format( i+1, index_to_hp[i+1], lnPIP, num_nogap_taxa, numgaps, mostcommonaa, mostcommoncount, num_nogap_taxa-mostcommoncount )
 
 	print >> sys.stderr, "# Assigned values for {} sites".format( len(index_to_hp) )
 	totalconstsites = sum(constcounter.values())
