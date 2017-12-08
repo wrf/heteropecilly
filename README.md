@@ -26,6 +26,27 @@ The script takes the tabular data from the above script, and adds the constant s
 
 `cat supermatrix_97sp_401632pos_1719genes.fasta simion2017_hp_by_site_w_const.fasta > supermatrix_97sp_401632pos_1719genes_w_hp_const.fasta`
 
+## sitewise_ll_to_columns.py ##
+Because not all sites provide the same phylogenetic information for all clades (i.e. sites that are constant except in vertebrates would not affect relationships of other taxa), it is necessary to get information about which sites strongly support certain hypotheses of relationships. This can be done in [RAxML](https://sco.h-its.org/exelixis/web/software/raxml/index.html), using the `-f G` option to calculate site-wise likelihoods (the approach used by [Shen et al 2017](https://www.nature.com/articles/s41559-017-0126) ).
+
+`raxmlHPC-PTHREADS-SSE3-8.2.11 -f G -s simion2017_97sp_401632pos_1719genes.phy -m PROTGAMMALG -z tree_97sp_CAT.rooted_combined.tre -n simion2017_97sp_401632pos_1719genes -T 6`
+
+The output of this can be converted to columns, where it can be more easily used by other programs:
+
+`./sitewise_ll_to_columns.py RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes > RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab`
+
+While this makes use a different model, this can nonetheless be directly compared to the heteropecilly scores to give some sense of which sites may provide the most information with one model or the other. The two can be plotted together, and colors correspond to the 10 deciles used in the original analysis. Although ML can be calculated for constant sites (which differs between trees, possibly due to gap positions), these sites have no heteropecilly score and are excluded.
+
+![simion2017_hp_vs_absdln_plot.png](https://github.com/wrf/heteropecilly/blob/master/simion2017_hp_vs_absdln_plot.png)
+
+When this is instead clustered as a barplot in the deciles, the pattern becomes more obvious: heteropecillious sites account for substantially more information than homopecillious sites. The 30% most heteropecillious sites account for more phylogenetic information than the rest combined (26598 vs. 24910 dlnL). This includes both sites favoring porifera-sister and ctenophore-sister. Thus, it is not surprising that removal of these sites leads to an alternate topology being favored (coelenterata, see supplement of [Simion et al](http://www.sciencedirect.com/science/article/pii/S0960982217301999) ). From this, it is also probably unwise to remove these sites.
+
+![simion2017_hp_vs_dln_boxplot.png](https://github.com/wrf/heteropecilly/blob/master/simion2017_hp_vs_dln_boxplot.png)
+
+Curiously, the sites that are determined by `RAxML` to have the most information are actually the sites that cause the most problems for the CAT model `phylobayes`. It could very well be that the differing favored topologies occur because the two programs leverage information from totally different sites. If heteropecillious sites violate certain model assumptions of the CAT model, then `phylobayes` can best handle sites that change neutrally within a biochemical category. Conversely, heteropecillious sites contain more information that can be used by `RAxML`, perhaps because they reflect rare and lineage-specific changes, such as changes between biochemical categories like L to R.
+
+If it were possible to get site-wise probability information, then one could directly examine which sites differentially account for the different results between the two programs. Without such information, any argument favoring one or the other program, model or topology is essentially incomplete, and offers very little understanding or predictive power.
+
 ## blast_to_align_pairs.py ##
 Because of trimming steps, most proteins in a supermatrix do not represent the entire, or even the majority, of the original protein, and the identity of this protein (say the name of a gene) may be unknown. For cases where human was used, the IDs of the human proteins can be extract with `blastp`, as even trimmed proteins will have the top hit to a real human protein with almost 100% identity. Thus, individual alignments of each trimmed protein can be remade with the reference protein.
 
@@ -43,7 +64,7 @@ Because `blastp` does not allow gaps in sequences, and most sequences extracted 
 
 Make the blast protein database with `makeblastdb` and then run `blastp` and report the results as tabular (`-outfmt 6`).
 
-`blastp -query simion2017_taxa/Homo_sapiens.fasta -db human_uniprot.fasta -outfmt 6 -max_target_seqs 1 > simion2017_taxa/hsapiens_vs_uniprot_blastp.tab`
+`blastp -query simion2017_taxa/Homo_sapiens.fasta.nogaps -db human_uniprot.fasta -outfmt 6 -max_target_seqs 1 > simion2017_taxa/hsapiens_vs_uniprot_blastp.tab`
 
 The top hit for each protein should probably be the original reference protein. If this is not the case, then that protein probably should not be used in phylogeny in the first place. Using the blast results, new alignments can be generated for each protein from the supermatrix and the reference protein. Each file is in fasta format and contains three sequences, the protein used in the supermatrix, the reference protein, and a row of the extracted heteropecilly scores from the supermatrix. The folder containing all of the files is automatically named (based on current time).
 
@@ -72,4 +93,29 @@ Each row contains 8 columns:
 These results can be summarized between multiple supermatrices. It is clear that for many proteins, most of the sequence was trimmed, likely leaving just a single domain. The orthology of these proteins is obviously in question. This may generally be a consequence of the reliance on transcriptomic data, although the Borowiec 2015 study made use of only genomes yet many proteins are still likely incomplete, possibly due to assembly or annotation problems.
 
 ![align_pair_stats_simion-whelan-borowiec.png](https://github.com/wrf/heteropecilly/blob/master/align_pair_stats_simion-whelan-borowiec.png)
+
+## get_best_structures.py ##
+Although most phylogenetics programs treat sites within an alignment as independent entities, biochemists have known for decades that sites within proteins interact. 
+
+A large number of proteins already have crystal structures, or partial structures. This information is stored within the [text-format database for SwissProt](http://www.uniprot.org/downloads), and can be extracted into a summary table with the `parse_swissprot_data.py` script. Option `-s` sets the species filter to `9606`, which is the NCBI ID for *H. sapiens*.
+
+`parse_swissprot_data.py -u uniprot_sprot.dat.gz -s 9606 > uniprot-9606_prots_w_pdb.tab`
+
+This will generate a table for all human proteins that have any structure in PDB. This does not include proteins where a mouse homolog has a crystal structure that can be used as a template for a human protein model. Each row contains 6 columns:
+
+* Uniprot ID, meaning the protein name, not the 6-digit accession number
+* PDB ID
+* length of reference protein
+* string of protein chain and span
+* protein coverage by the structure, in residues
+* fraction protein coverage by the structure
+
+`EGFR_HUMAN  4LI5  1210  A=696-1020  325  0.269`
+
+Because the crystal set only contains structures for 618 proteins, less than half of the 1499 human proteins in the set have 3D information. However, the heteropecilly information can be mapped on to the existing structures using a series of scripts.
+
+Then, to sort out which proteins in the supermatrix have a structure, read in the alignment information, both to compare the span of the protein in the supermatrix and the structures, and also to generate a shell script to colorize them in [PyMol](https://pymol.org/2/) with `-c`.
+
+`get_best_structures.py -U ~/db/uniprot-9606_prots_w_pdb.tab -a blast_alignments_20171009-153805/ -s 9606 -c pdb_hp_commands.sh > human_prots_w_pdb.tab`
+
 

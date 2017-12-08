@@ -2,7 +2,7 @@
 #
 # blast_to_align_pairs.py
 
-'''blast_to_align_pairs.py  last modified 2017-10-16
+'''blast_to_align_pairs.py  last modified 2017-10-31
 
 blast_to_align_pairs.py -q query_prots.fasta -s prot_db.fasta -b blastp.tab -d pair_dir -r Homo_sapiens.fasta
 
