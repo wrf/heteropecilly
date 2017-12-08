@@ -118,4 +118,6 @@ Then, to sort out which proteins in the supermatrix have a structure, read in th
 
 `get_best_structures.py -U ~/db/uniprot-9606_prots_w_pdb.tab -a blast_alignments_20171009-153805/ -s 9606 -c pdb_hp_commands.sh > human_prots_w_pdb.tab`
 
+Heteropecilly color scheme can be used within Pymol, using `run ~/git/pdbcolor/color_by_heteropecilly.py`
 
+![2o8b_w_hp.png](https://github.com/wrf/heteropecilly/blob/master/2o8b_w_hp.png)
