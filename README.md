@@ -118,6 +118,8 @@ Then, to sort out which proteins in the supermatrix have a structure, read in th
 
 `get_best_structures.py -U ~/db/uniprot-9606_prots_w_pdb.tab -a blast_alignments_20171009-153805/ -s 9606 -c pdb_hp_commands.sh > human_prots_w_pdb.tab`
 
-Heteropecilly color scheme can be used within Pymol, using `run ~/git/pdbcolor/color_by_heteropecilly.py`
+The shell script will call `pdb_heteropecilly.py` for each PDB file in a directory, returning an error if that file is not there. This will recode the beta factors of each atom for each residue as heteropecilly scores. Heteropecilly color scheme can be visualized within Pymol, using the command in the console `run ~/git/pdbcolor/color_by_heteropecilly.py`
+
+Below is an example from 2o8b.pdb, which is the structure of the mismatch repair protein MSH2/MSH6 heterodimer. Heteropecilly scores were only calculated for MSH2, so the other protein is colored in pale gray. Gaps or missing data are dark gray, constant sites are green, and the colors follow the deciles as in the charts above. In this example, the DNA helix is colored yellow, to distinguish it from the protein. Several features are evident. Large sections of the alignment had been removed by trimming, resulting in gaps when compared to the reference protein, and dark gray regions throughout the protein. Constant sites for a distinct sector at the bottom of the image, possibly involved in the interface with MSH6. Many heteropecillious sites (red) appear to occur on the surface of the protein, perhaps directly interacting with the solvent or other proteins, though the extent of this was not precisely calculated. This may mean that, in general, heteropecillious sites and lineage-specific changes are a reflection of unique interactions *between* proteins.
 
 ![2o8b_w_hp.png](https://github.com/wrf/heteropecilly/blob/master/2o8b_w_hp.png)
