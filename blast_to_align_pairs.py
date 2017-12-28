@@ -2,7 +2,7 @@
 #
 # blast_to_align_pairs.py
 
-'''blast_to_align_pairs.py  last modified 2017-10-31
+'''blast_to_align_pairs.py  last modified 2017-12-26
 
 blast_to_align_pairs.py -q query_prots.fasta -s prot_db.fasta -b blastp.tab -d pair_dir -r Homo_sapiens.fasta
 
@@ -39,6 +39,29 @@ def read_tabular_hp(hptabular):
 			hpdict[pos] = hp
 	print >> sys.stderr, "# Found heteropecilly for {} sites".format( len(hpdict) ), time.asctime()
 	return hpdict
+
+def read_tabular_ln(lntabular):
+	'''read tabular log-likelihood results and return a dict where keys are position and value is dlnL'''
+	lndict = {}
+	linecounter = 0
+	print >> sys.stderr, "# Reading log-likelihood by site from {}".format(lntabular), time.asctime()
+	for line in open(lntabular,'r'):
+		line = line.strip()
+		if line and line[0]!="#": # ignore blank and comment lines
+			linecounter += 1
+			if linecounter < 2:
+				continue
+			lsplits = line.split('\t')
+			pos = int(lsplits[0])
+			dlnl = float(lsplits[1]) - float(lsplits[2])
+			#absdlnl = abs(dlnl)
+			adjdlnl = dlnl + 8
+			if adjdlnl >= 16:
+				adjdlnl = 15
+			hexdlnl = hex( int(adjdlnl) )[-1]
+			lndict[pos] = hexdlnl
+	print >> sys.stderr, "# Found log-likelihood for {} sites".format( len(lndict) ), time.asctime()
+	return lndict
 
 def run_mafft(MAFFT, rawseqsfile):
 	'''generate multiple sequence alignment from fasta and return MSA filename'''
@@ -127,6 +150,7 @@ def main(argv, wayout):
 	parser.add_argument('-q','--query', help="fasta file of blast query proteins from supermatrix")
 	parser.add_argument('-s','--subject', help="fasta file of blast database proteins; this was the -db file for blastp")
 	parser.add_argument('-r','--reference', help="fasta file of proteins from the alignment with gaps, only needed if heteropecilly is computed")
+	parser.add_argument('-l','--log-likelihood', help="tabular log-likelihood data file from RAxML")
 	parser.add_argument('-p','--heteropecilly', help="tabular heteropecilly data file")
 	args = parser.parse_args(argv)
 
@@ -151,9 +175,13 @@ def main(argv, wayout):
 	else:
 		refdict = None
 
-	hpbysite = read_tabular_hp(args.heteropecilly) if args.heteropecilly else None
+	valsbysite = None # by default is None
+	if args.heteropecilly:
+		valsbysite = read_tabular_hp(args.heteropecilly)
+	elif args.log_likelihood:
+		valsbysite = read_tabular_ln(args.log_likelihood)
 
-	make_pairs_from_blast(args.blast, querydict, subjectdict, new_aln_dir, args.mafft, hpbysite, refdict)
+	make_pairs_from_blast(args.blast, querydict, subjectdict, new_aln_dir, args.mafft, valsbysite, refdict)
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)
