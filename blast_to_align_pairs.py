@@ -76,7 +76,7 @@ def run_mafft(MAFFT, rawseqsfile):
 	else:
 		raise OSError("Cannot find expected output file {}".format(aln_output) )
 
-def make_heteropecilly_string(aln_file, hpdict, refprotdict):
+def make_heteropecilly_string(aln_file, scoredict, refprotdict):
 	'''from partial alignment to full protein, return string of heteropecilly for partial alignment'''
 	print >> sys.stderr, "# Reading alignment from {}".format( aln_file )
 	alignment = AlignIO.read( aln_file, "fasta" )
@@ -86,13 +86,13 @@ def make_heteropecilly_string(aln_file, hpdict, refprotdict):
 	rangeindex = [ int(x) for x in os.path.basename(aln_file).split("-")[0:2] ]
 
 	# remove gapped sites from heteropecilly based on aligned and trimmed protein
-	hp_no_gaps = ""
+	score_no_gaps = ""
 	hpoffset = 0
 	refid = alignment[0].id # should always be first seq in alignment
 	for i,site in enumerate(str(refprotdict[refid].seq)):
 		if site!="-": # if site is not gap, keep heteropecilly score
 			adjindex = rangeindex[0] + i # + hpoffset
-			hp_no_gaps += hpdict[adjindex]
+			score_no_gaps += scoredict[adjindex]
 	#	else: # increase offset for each gap
 		#	hpoffset += 1
 
@@ -103,12 +103,12 @@ def make_heteropecilly_string(aln_file, hpdict, refprotdict):
 		alignment_column = alignment[:,i] # all letters per site
 		if alignment_column[0]=="-": # if first character is a gap, assign gap for heteropecilly
 			aligned_hpstring += "-"
-		else: # otherwise use value from hp_no_gaps
-			aligned_hpstring += hp_no_gaps[refoffset]
+		else: # otherwise use value from score_no_gaps
+			aligned_hpstring += score_no_gaps[refoffset]
 			refoffset += 1
 	return aligned_hpstring
 
-def make_pairs_from_blast(blastfile, querydict, subjectdict, new_aln_dir, mafftbin, hpdict, refdict ):
+def make_pairs_from_blast(blastfile, querydict, subjectdict, new_aln_dir, mafftbin, scoredict, refdict, fastascorestring ):
 	'''iterate through blast hits, generate fasta files of each query subject pair and align them'''
 	qspairs = {} # key is query, value is subject, assuming only one hit but multiple HSPs
 	linecounter = 0
@@ -134,10 +134,10 @@ def make_pairs_from_blast(blastfile, querydict, subjectdict, new_aln_dir, mafftb
 		aln_file = run_mafft(mafftbin, fasta_output)
 		if aln_file: # check if file was made
 			filecounter += 1
-			if refdict and hpdict: # if alignment proteins and heteropecilly are given
-				hpstring = make_heteropecilly_string(aln_file, hpdict, refdict)
+			if refdict and scoredict: # if alignment proteins and heteropecilly are given
+				hpstring = make_heteropecilly_string(aln_file, scoredict, refdict)
 				with open(aln_file, 'a') as af:
-					print >> af, ">Heteropecilly_score\n{}".format( hpstring )
+					print >> af, ">{}\n{}".format( fastascorestring, hpstring )
 	print >> sys.stderr, "# generated {} alignments".format(filecounter), time.asctime()
 
 def main(argv, wayout):
@@ -176,12 +176,15 @@ def main(argv, wayout):
 		refdict = None
 
 	valsbysite = None # by default is None
+	fastascorestring = None
 	if args.heteropecilly:
 		valsbysite = read_tabular_hp(args.heteropecilly)
+		fastascorestring = "Heteropecilly_score"
 	elif args.log_likelihood:
 		valsbysite = read_tabular_ln(args.log_likelihood)
+		fastascorestring = "Likelihood_score"
 
-	make_pairs_from_blast(args.blast, querydict, subjectdict, new_aln_dir, args.mafft, valsbysite, refdict)
+	make_pairs_from_blast(args.blast, querydict, subjectdict, new_aln_dir, args.mafft, valsbysite, refdict, fastascorestring)
 
 if __name__ == "__main__":
 	main(sys.argv[1:], sys.stdout)
