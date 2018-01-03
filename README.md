@@ -45,7 +45,7 @@ When this is instead clustered as a barplot in the deciles, the pattern becomes 
 
 Curiously, the sites that are determined by `RAxML` to have the most information are actually the sites that cause the most problems for the CAT model `phylobayes`. It could very well be that the differing favored topologies occur because the two programs leverage information from totally different sites. If heteropecillious sites violate certain model assumptions of the CAT model, then `phylobayes` can best handle sites that change neutrally within a biochemical category. Conversely, heteropecillious sites contain more information that can be used by `RAxML`, perhaps because they reflect rare and lineage-specific changes, such as changes between biochemical categories like L to R.
 
-If it were possible to get site-wise probability information, then one could directly examine which sites differentially account for the different results between the two programs. Without such information, any argument favoring one or the other program, model or topology is essentially incomplete, and offers very little understanding or predictive power.
+If it were possible to get site-wise likelihood information from `phylobayes`, then one could directly examine which sites differentially account for the different results between the two programs and models. Without such information, any argument favoring one or the other program, model or topology is essentially incomplete, and offers very little understanding or predictive power.
 
 ## blast_to_align_pairs.py ##
 Because of trimming steps, most proteins in a supermatrix do not represent the entire, or even the majority, of the original protein, and the identity of this protein (say the name of a gene) may be unknown. For cases where human was used, the IDs of the human proteins can be extract with `blastp`, as even trimmed proteins will have the top hit to a real human protein with almost 100% identity. Thus, individual alignments of each trimmed protein can be remade with the reference protein.
@@ -71,6 +71,10 @@ The top hit for each protein should probably be the original reference protein. 
 `blast_to_align_pairs.py -b simion2017_taxa/hsapiens_vs_uniprot_blastp.tab -q simion2017_taxa/Homo_sapiens.fasta.nogaps -s human_uniprot.fasta -r simion2017_taxa/Homo_sapiens.fasta -p hp_by_site_w_const.tab`
 
 This requires `mafft`, though could be modified to run another aligner.
+
+Just as above, where an additional fasta line is generated for each alignment to show the heteropecilly scores, this can be used to show the difference in log-likelihood from `RAxML` using the `-l` option. This assumes that the relevant trees are the first two columns, and converts the difference into a hexadecimal value at each position, where no difference is 8, 9-f favor topology 1 and 0-7 favor topology 2.
+
+`blast_to_align_pairs.py -b simion2017_taxa/hsapiens_vs_uniprot_blastp.tab -q simion2017_taxa/Homo_sapiens.fasta.nogaps -s human_uniprot.fasta -r simion2017_taxa/Homo_sapiens.fasta -l RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab`
 
 ## alignment_pair_stats.py ##
 After using the above scripts, summary information about each alignment can be determined and printed into a tabular format.
