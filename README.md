@@ -26,6 +26,21 @@ The script takes the tabular data from the above script, and adds the constant s
 
 `cat supermatrix_97sp_401632pos_1719genes.fasta simion2017_hp_by_site_w_const.fasta > supermatrix_97sp_401632pos_1719genes_w_hp_const.fasta`
 
+A more complex table including the original lnPIP scores can be generated with another command:
+
+`convert_sites_to_hp_const.py -a simion2017_97sp_401632pos_1719genes.fasta -p heteropecilly-v2/hp_by_site.tab -P heteropecilly-v2/PAUL-90x341543v-C20.proba.tab > heteropecilly-v2/hp_by_site_w_const_20CAT.tab`
+
+Each row contains 8 columns:
+
+* site - number of site, starting with 1
+* group - heteropecilly decile (0-9, 9 being most heteropecillious), 10 or 11 if constant
+* lnPIP - log score from `PAUL-90x341543v-C20.proba.tab`, NA if 0
+* numTaxa - number of taxa with data
+* gaps - number of gaps, should be total minus numTaxa
+* mostCommon - most common amino acid at that site
+* freq - number of times the most common amino acid was found
+* otherCount - total count of other amino acids, should be numTaxa minus freq
+
 ## sitewise_ll_to_columns.py ##
 Because not all sites provide the same phylogenetic information for all clades (i.e. sites that are constant except in vertebrates would not affect relationships of other taxa), it is necessary to get information about which sites strongly support certain hypotheses of relationships. This can be done in [RAxML](https://sco.h-its.org/exelixis/web/software/raxml/index.html), using the `-f G` option to calculate site-wise likelihoods (the approach used by [Shen et al 2017](https://www.nature.com/articles/s41559-017-0126) ).
 
@@ -101,6 +116,17 @@ These results can be summarized between multiple supermatrices. It is clear that
 Remarkably, even though the pipelines in each paper should be recovering single-copy genes (usually starting from genomes to find the orthologs, then adding transcriptomes to fill up the matrix), very few genes are actually shared between the three studies.
 
 ![align_pairs_3-way_venn.png](https://github.com/wrf/heteropecilly/blob/master/align_pairs_3-way_venn.png)
+
+## amino_acid_distributions.py ##
+How do the constant sites compare to the rest of the sequences? Are the sequences that were chosen representative of all proteins? Because they were almost all trimmed to some degree, are they even representative of themselves? The frequency of each amino acid and gaps is counted for all taxa, as well as constant sites. Two reference files of the 1499 human proteins used in the alignments as well as all human proteins are also used to compared the frequencies.
+
+`amino_acid_distributions.py -a simion2017_97sp_401632pos_1719genes.fasta -p simion2017_human_uniprot.fasta human_uniprot.fasta > simion2017_aa_counts.tab`
+
+All 20 amino acids are constant in at some point. For several amino acids, the frequency as a constant site is far above what is found on average (notably glycine, also proline, tryptophan and cysteine), consistent with important structural roles for these ones. For others, the occurrence is much lower (L, V, I, S, T), which account for non-polar and small-polar amino acids. Other biochemical groups like R/K and D/E have one that is less frequent (K and E) with one much more frequent (R and D), again possibly due to slightly different biochemical roles (such as R being always charged).
+
+![simion2017_aa_counts.png](https://github.com/wrf/heteropecilly/blob/master/simion2017_aa_counts.png)
+
+Given the normal approach of trimming, it appears that some amino acids are disproportionately removed, whereby the full-length human proteins have far more S, P, and to a lesser extent, Q and E than the trimmed versions in the alignment. As almost 60% of the original amino acids were removed for the Simion set (and 40% in most other datasets), the final alignments ultimtely may be biased by the sequence composition of certain domains.
 
 ## get_best_structures.py ##
 Although most phylogenetics programs treat sites within an alignment as independent entities, biochemists have known for decades that sites within proteins interact. 
