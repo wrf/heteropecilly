@@ -2,9 +2,15 @@
 #
 # amino_acid_distributions.py
 
-'''amino_acid_distributions.py  last updated 2017-11-21
+'''amino_acid_distributions.py  last updated 2018-01-22
 
 amino_acid_distributions.py -a simion2017_alignment.aln > simion2017_aa_counts.tab
+
+    certain taxa can be filtered for special analysis, using -I
+    values should be specified in the order of the alignment
+    as a comma-separated list, starting with 1
+
+amino_acid_distributions.py -I 1,6,19,30,56,70,87
 
 '''
 
@@ -16,7 +22,7 @@ from collections import defaultdict,Counter
 from Bio import SeqIO
 from Bio import AlignIO
 
-def alignment_aa_counts(alignfile, alignformat, aalist):
+def alignment_aa_counts(alignfile, alignformat, aalist, extraindex, extraname):
 	print >> sys.stderr, "# Reading alignment from {}".format( alignfile )
 	alignment = AlignIO.read( alignfile, alignformat )
 
@@ -28,8 +34,8 @@ def alignment_aa_counts(alignfile, alignformat, aalist):
 	for seqrec in alignment:
 		countsbyspecies[seqrec.id] = Counter( str(seqrec.seq) )
 
-	holozoacounter = defaultdict(int)
 	constcounter = defaultdict(int)
+	extracounter = defaultdict(int) # for counting in filtered set
 
 	print >> sys.stderr, "# Identifying constant sites from {}".format( alignfile ), time.asctime()
 	for i in range(al_length):
@@ -39,20 +45,21 @@ def alignment_aa_counts(alignfile, alignformat, aalist):
 		aa_counter = Counter( nogap_alignment_column )
 		mostcommonaa = aa_counter.most_common(1)[0][0]
 
-		# to account for sites that are constant in the 90 taxa, but not the 97
-		holozoanumbers = [1 , 6 , 19 , 30 , 56 , 70 , 87] # seq number in alignment
-		# for Abeoforma, Amoebidium, Capsaspora, Creolimax, Ministeria, Prium, Sphaerofirma
-		aligncol_list = list(alignment_column)
-		for sn in reversed(holozoanumbers):
-			aligncol_list.pop(sn-1) # seq numbers start at 1, not 0, adjust python index
-		filtaligncol = "".join(aligncol_list)
-		nogap_filtaligncol = filtaligncol.replace("-","").replace("X","") # excluding gaps
-		filtaa_counter = Counter( nogap_filtaligncol )
+		# handle extra index to filter each alignment column
+		if extraindex:
+			aligncol_list = list(alignment_column)
+			for sn in reversed(extraindex):
+				aligncol_list.pop(sn-1) # seq numbers start at 1, not 0, adjust python index
+			filtaligncol = "".join(aligncol_list)
+			nogap_filtaligncol = filtaligncol.replace("-","").replace("X","") # excluding gaps
+			filtaa_counter = Counter( nogap_filtaligncol )
 
-		if len(aa_counter)>1: # meaning site has more than 1 possible AA, so use HP
+		if len(aa_counter)>1: # more than 1 AA for this site
+			if not extraindex: # if no extra is given, disregard this calculation
+				continue
 			if len(filtaa_counter)==1: # meaning filtered site is constant, but unfiltered is not
-				holozoacounter[ filtaa_counter.most_common(1)[0][0] ] += 1
-		else: # site is constant, mark as 11 so can be colored accordingly
+				extracounter[ filtaa_counter.most_common(1)[0][0] ] += 1
+		else: # site is constant across all taxa
 			constcounter[ mostcommonaa ] += 1
 
 	print >> sys.stderr, "# Counted {} constant sites".format( sum(constcounter.values()) ), time.asctime()
@@ -62,7 +69,9 @@ def alignment_aa_counts(alignfile, alignformat, aalist):
 	for k in countsbyspecies.iterkeys():
 		print >> sys.stdout, "{}\t{}".format( k, "\t".join( [ str(countsbyspecies[k].get(x,0)) for x in aalist ]) )
 	print >> sys.stdout, "Constants\t{}".format( "\t".join( [ str(constcounter[x]) for x in aalist] ) )
-	print >> sys.stdout, "Holozoanconst\t{}".format( "\t".join( [ str(holozoacounter[x]) for x in aalist] ) )
+	# print extra values if present
+	if extraindex:
+		print >> sys.stdout, "{}\t{}".format( extraname, "\t".join( [ str(extracounter[x]) for x in aalist] ) )
 
 def count_from_fasta(fastafile):
 	aacounts = Counter()
@@ -81,12 +90,22 @@ def main(argv, wayout):
 	parser.add_argument("-a","--alignment", help="full multiple sequence alignment", required=True)
 	parser.add_argument('-f','--format', default="fasta", help="alignment format [fasta]")
 	parser.add_argument('-p','--protein-files', nargs="*", help="additional protein files in fasta format")
+	parser.add_argument('-I','--extra-index', help="taxa to remove from alignment for a filtered analysis, as comma-separated list, like: 1,7,25")
+	parser.add_argument('-N','--extra-name', default="Extraconst", help="row name for filtered results in table")
 	args = parser.parse_args(argv)
 
 	AALIST = list("ACDEFGHIKLMNPQRSTVWY-X") # this ignores U selenocysteine
                   # B      J   O    U X Z
 
-	alignment_aa_counts( args.alignment, args.format, AALIST)
+	extraname = args.extra_name # should be None by default
+	extraindex = [int(i) for i in args.extra_index.split(",")] if args.extra_index else []
+	
+	# extraname = "Holozoaconst"
+	# to account for sites that are constant in the 90 taxa, but not the 97
+	# for Abeoforma, Amoebidium, Capsaspora, Creolimax, Ministeria, Prium, Sphaerofirma
+	# extraindex = [1 , 6 , 19 , 30 , 56 , 70 , 87] # seq number in alignment, alphabetically
+
+	alignment_aa_counts( args.alignment, args.format, AALIST, extraindex, extraname)
 
 	if args.protein_files:
 		for protfile in args.protein_files:

@@ -42,7 +42,7 @@ Each row contains 8 columns:
 * otherCount - total count of other amino acids, should be numTaxa minus freq
 
 ## sitewise_ll_to_columns.py ##
-Because not all sites provide the same phylogenetic information for all clades (i.e. sites that are constant except in vertebrates would not affect relationships of other taxa), it is necessary to get information about which sites strongly support certain hypotheses of relationships. This can be done in [RAxML](https://sco.h-its.org/exelixis/web/software/raxml/index.html), using the `-f G` option to calculate site-wise likelihoods (the approach used by [Shen et al 2017](https://www.nature.com/articles/s41559-017-0126) ).
+Because not all sites provide the same phylogenetic information for all clades (i.e. sites that are constant except in vertebrates would not affect relationships of other taxa), it is necessary to get information about which sites strongly support certain hypotheses of relationships. This can be done in [RAxML](https://sco.h-its.org/exelixis/web/software/raxml/index.html), using the `-f G` option to calculate site-wise likelihoods (the approach used by [Weigert et al 2014](https://academic.oup.com/mbe/article/31/6/1391/1009370) and [Shen et al 2017](https://www.nature.com/articles/s41559-017-0126) ).
 
 `raxmlHPC-PTHREADS-SSE3-8.2.11 -f G -s simion2017_97sp_401632pos_1719genes.phy -m PROTGAMMALG -z tree_97sp_CAT.rooted_combined.tre -n simion2017_97sp_401632pos_1719genes -T 6`
 
@@ -126,7 +126,7 @@ All 20 amino acids are constant in at some point. For several amino acids, the f
 
 ![simion2017_aa_counts.png](https://github.com/wrf/heteropecilly/blob/master/simion2017_aa_counts.png)
 
-Given the normal approach of trimming, it appears that some amino acids are disproportionately removed, whereby the full-length human proteins have far more S, P, and to a lesser extent, Q and E than the trimmed versions in the alignment. As almost 60% of the original amino acids were removed for the Simion set (and 40% in most other datasets), the final alignments ultimtely may be biased by the sequence composition of certain domains.
+Given the normal approach of trimming, it appears that some amino acids are disproportionately removed, whereby the full-length human proteins have far more S, P, and to a lesser extent, Q and E than the trimmed versions in the alignment. As almost 60% of the original amino acids were removed for the Simion set (and 40% in most other datasets), the final alignments ultimately may be biased by the sequence composition of certain domains. [Tan et al 2015](https://academic.oup.com/sysbio/article/64/5/778/1685763) found that alignment trimming generally makes trees worse, as essentially all methods overtrim. Given this, the high average trimming in a number of studies suggests that large amounts of phylogenetic information are being lost by trimming.
 
 ## get_best_structures.py ##
 Although most phylogenetics programs treat sites within an alignment as independent entities, biochemists have known for decades that sites within proteins interact. 
