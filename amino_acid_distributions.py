@@ -18,13 +18,19 @@ import sys
 import argparse
 import time
 import os
+import gzip
 from collections import defaultdict,Counter
 from Bio import SeqIO
 from Bio import AlignIO
 
 def alignment_aa_counts(alignfile, alignformat, aalist, extraindex, extraname):
-	print >> sys.stderr, "# Reading alignment from {}".format( alignfile )
-	alignment = AlignIO.read( alignfile, alignformat )
+	if alignfile.rsplit('.',1)[1]=="gz": # autodetect gzip format
+		opentype = gzip.open
+		print >> sys.stderr, "# reading alignment {} as gzipped".format(alignfile), time.asctime()
+	else: # otherwise assume normal open
+		opentype = open
+		print >> sys.stderr, "# reading alignment {}".format(alignfile), time.asctime()
+	alignment = AlignIO.read(opentype(alignfile), alignformat)
 
 	al_length = alignment.get_alignment_length()
 	num_taxa = len(alignment)
