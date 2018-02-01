@@ -8,7 +8,7 @@ Homopecilly and heteropecilly are concepts proposed by [Roure and Philippe (2011
 
 This requires binning taxa into groups, and comparing the variation within each site between groups. For this reason, tree topology cannot be tested (such as monophyly/paraphyly of specific groups), as the binning already assumes a topology.
 
-## combine_heteropecilly.py ##
+## combine_heteropecilly ##
 The raw analysis from [Simion 2017](https://github.com/psimion/SuppData_Metazoa_2017) contained two sets of files: a table of the raw/log scores calculated from the supermatrix alignment, and files containing intervals for removing deciles of most heteropecillious sites. For instance, the file `RemPIP90.bor` contains the interval for eliminating 90% most heteropecillous positions, so creating the alignment of the 10% most homopecillous positions. The heteropecilly score of sites found only in `RemPIP10.bor` should be max (9 of 9, the highest decile) while the score of any sites not included in any file (so finally not in `RemPIP90.bor`) should be 0 of 9.
 
 `./combine_heteropecilly.py -i heteropecilly-v2/*bor -f -l 341543 > heteropecilly-v2/hp_by_site.fasta`
@@ -17,7 +17,7 @@ The script has two output options, one is a table of values by site, the other i
 
 ![PAUL-90x341543v-C20.lnPIP.png](https://github.com/wrf/heteropecilly/blob/master/PAUL-90x341543v-C20.lnPIP.png)
 
-## convert_sites_to_hp_const.py ##
+## convert_sites_to_hp_const ##
 Appx. 60k constant sites were removed from the original alignment (which was `supermatrix_97sp_401632pos_1719genes.fasta`). This consists of 3447 sites which were constant only in choanozoa and 56642 sites from all species. 7 protist taxa were removed for the heteropecilly analysis.
 
 `./convert_sites_to_hp_const.py -a simion2017_97sp_401632pos_1719genes.fasta -p heteropecilly-v2/hp_by_site.tab --fasta > heteropecilly-v2/hp_by_site_w_const.fasta`
@@ -41,7 +41,7 @@ Each row contains 8 columns:
 * freq - number of times the most common amino acid was found
 * otherCount - total count of other amino acids, should be numTaxa minus freq
 
-## sitewise_ll_to_columns.py ##
+## sitewise_ll_to_columns ##
 Because not all sites provide the same phylogenetic information for all clades (i.e. sites that are constant except in vertebrates would not affect relationships of other taxa), it is necessary to get information about which sites strongly support certain hypotheses of relationships. This can be done in [RAxML](https://sco.h-its.org/exelixis/web/software/raxml/index.html), using the `-f G` option to calculate site-wise likelihoods (the approach used by [Weigert et al 2014](https://academic.oup.com/mbe/article/31/6/1391/1009370) and [Shen et al 2017](https://www.nature.com/articles/s41559-017-0126) ).
 
 `raxmlHPC-PTHREADS-SSE3-8.2.11 -f G -s simion2017_97sp_401632pos_1719genes.phy -m PROTGAMMALG -z tree_97sp_CAT.rooted_combined.tre -n simion2017_97sp_401632pos_1719genes -T 6`
@@ -62,7 +62,20 @@ Curiously, the sites that are determined by `RAxML` to have the most information
 
 If it were possible to get site-wise probability information from `phylobayes`, then one could directly examine which sites differentially account for the different results between the two programs. Without such information, any argument favoring one or the other program, model or topology is essentially incomplete, and offers very little understanding or predictive power.
 
-## blast_to_align_pairs.py ##
+## sitewise_get_strong_sites ##
+The vast majority of sites do not weigh in on any given node of a tree. This makes sense as not all sites should be expected to be equally informative to all levels of a tree. Fast-evolving sites may be relevant for narrower time scales, genus- or family level, while slower evolving sites would be relevant for phylum level distinctions. Thus, sites critical for resolving a particular node can be extracted using the `sitewise_get_strong_sites.py` script. By default, sites where the absolute value of the difference is greater than 0.5 are kept. For the Simion dataset, this yields 8106 sites out of 344990 potential sites.
+
+`sitewise_get_strong_sites.py -a simion2017_97sp_401632pos_1719genes.aln -l RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab -o simion2017_97sp_perSiteLLs_strong.aln`
+
+As it may also be useful to identify which sites favor which of the two topologies, a fasta string can be generated where each site is the calculated difference between the two topologies. Because differences span a range of around -8 to +8, this can be converted to a single character in base16. Thus, a score of 8.0 would mean the likelihood is the same for both, all values above 8.0 (meaning 8.1 - f) favor the first tree, while all values below 8.0 (7.9 - 0) favor the second tree.
+
+``sitewise_columns_to_fasta.py RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab > simion2017_97sp_perSiteLLs.fasta``
+
+The fasta string can be combined with the original alignment, and sites can be extracted as above.
+
+``cat simion2017_97sp_401632pos_1719genes.aln simion2017_97sp_perSiteLLs.fasta > simion2017_97sp_strong_w_lnl.aln``
+
+## blast_to_align_pairs ##
 Because of trimming steps, most proteins in a supermatrix do not represent the entire, or even the majority, of the original protein, and the identity of this protein (say the name of a gene) may be unknown. For cases where human was used, the IDs of the human proteins can be extract with `blastp`, as even trimmed proteins will have the top hit to a real human protein with almost 100% identity. Thus, individual alignments of each trimmed protein can be remade with the reference protein.
 
 Human proteins can be extracted from the [SwissProt set](http://www.uniprot.org/downloads). Because of the standard naming scheme of Uniprot proteins, the `getAinB.py` script extracts all proteins with the species tag *_HUMAN*, creating a new file of only human proteins.
@@ -91,7 +104,7 @@ Just as above, where an additional fasta line is generated for each alignment to
 
 `blast_to_align_pairs.py -b simion2017_taxa/hsapiens_vs_uniprot_blastp.tab -q simion2017_taxa/Homo_sapiens.fasta.nogaps -s human_uniprot.fasta -r simion2017_taxa/Homo_sapiens.fasta -l RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab`
 
-## alignment_pair_stats.py ##
+## alignment_pair_stats ##
 After using the above scripts, summary information about each alignment can be determined and printed into a tabular format.
 
 `./alignment_pair_stats.py -a blast_alignments_20171009-153805/ > simion2017_align_pair_stats.tab`
@@ -117,18 +130,18 @@ Remarkably, even though the pipelines in each paper should be recovering single-
 
 ![align_pairs_3-way_venn.png](https://github.com/wrf/heteropecilly/blob/master/align_pairs_3-way_venn.png)
 
-## amino_acid_distributions.py ##
+## amino_acid_distributions ##
 How do the constant sites compare to the rest of the sequences? Are the sequences that were chosen representative of all proteins? Because they were almost all trimmed to some degree, are they even representative of themselves? The frequency of each amino acid and gaps is counted for all taxa, as well as constant sites. Two reference files of the 1499 human proteins used in the alignments as well as all human proteins are also used to compared the frequencies.
 
 `amino_acid_distributions.py -a simion2017_97sp_401632pos_1719genes.fasta -p simion2017_human_uniprot.fasta human_uniprot.fasta > simion2017_aa_counts.tab`
 
 All 20 amino acids are constant in at some point. For several amino acids, the frequency as a constant site is far above what is found on average (notably glycine, also proline, tryptophan and cysteine), consistent with important structural roles for these ones. For others, the occurrence is much lower (L, V, I, S, T), which account for non-polar and small-polar amino acids. Other biochemical groups like R/K and D/E have one that is less frequent (K and E) with one much more frequent (R and D), again possibly due to slightly different biochemical roles (such as R being always charged).
 
-![simion2017_aa_counts.png](https://github.com/wrf/heteropecilly/blob/master/simion2017_aa_counts.png)
+![simion2017_aa_counts.png](https://github.com/wrf/heteropecilly/blob/master/aa_counts/simion2017_aa_counts.png)
 
 Given the normal approach of trimming, it appears that some amino acids are disproportionately removed, whereby the full-length human proteins have far more S, P, and to a lesser extent, Q and E than the trimmed versions in the alignment. As almost 60% of the original amino acids were removed for the Simion set (and 40% in most other datasets), the final alignments ultimately may be biased by the sequence composition of certain domains. [Tan et al 2015](https://academic.oup.com/sysbio/article/64/5/778/1685763) found that alignment trimming generally makes trees worse, as essentially all methods overtrim. Given this, the high average trimming in a number of studies suggests that large amounts of phylogenetic information are being lost by trimming.
 
-## get_best_structures.py ##
+## get_best_structures ##
 Although most phylogenetics programs treat sites within an alignment as independent entities, biochemists have known for decades that sites within proteins interact. 
 
 A large number of proteins already have crystal structures, or partial structures. This information is stored within the [text-format database for SwissProt](http://www.uniprot.org/downloads), and can be extracted into a summary table with the `parse_swissprot_data.py` script. Option `-s` sets the species filter to `9606`, which is the NCBI ID for *H. sapiens*.
