@@ -75,10 +75,17 @@ The fasta string can be combined with the original alignment, and sites can be e
 
 ``cat simion2017_97sp_401632pos_1719genes.aln simion2017_97sp_perSiteLLs.fasta > simion2017_97sp_strong_w_lnl.aln``
 
+## sitewise_recode_constant_sites ##
+Constant sites should have no difference between lnL of any topology, yet they do (probably due to which species have gaps/missing data). These sites can specifically be recoded (as `const` or `x`) so that they are excluded from some future analyses.
+
+`sitewise_recode_constant_sites.py -a simion2017_97sp_401632pos_1719genes.aln -l RAxML_perSiteLLs.simion2017_97sp_401632pos_1719genes.tab > RAxML_perSiteLLs.simion2017_const_recoded.tab`
+
+The `const_recoded.tab` file can be used for `sitewise_columns_to_fasta.py` or `blast_to_align_pairs.py`.
+
 ## blast_to_align_pairs ##
 Because of trimming steps, most proteins in a supermatrix do not represent the entire, or even the majority, of the original protein, and the identity of this protein (say the name of a gene) may be unknown. For cases where human was used, the IDs of the human proteins can be extract with `blastp`, as even trimmed proteins will have the top hit to a real human protein with almost 100% identity. Thus, individual alignments of each trimmed protein can be remade with the reference protein.
 
-Human proteins can be extracted from the [SwissProt set](http://www.uniprot.org/downloads). Because of the standard naming scheme of Uniprot proteins, the `getAinB.py` script extracts all proteins with the species tag *_HUMAN*, creating a new file of only human proteins.
+Because human is being used as the reference set, all human proteins must be extracted from the [SwissProt set](http://www.uniprot.org/downloads). Because of the standard naming scheme of Uniprot proteins, the `getAinB.py` script extracts all proteins with the species tag *_HUMAN*, creating a new file of only human proteins.
 
 `getAinB.py _HUMAN uniprot_sprot.fasta -s > human_uniprot.fasta`
 
@@ -94,11 +101,13 @@ Make the blast protein database with `makeblastdb` and then run `blastp` and rep
 
 `blastp -query simion2017_taxa/Homo_sapiens.fasta.nogaps -db human_uniprot.fasta -outfmt 6 -max_target_seqs 1 > simion2017_taxa/hsapiens_vs_uniprot_blastp.tab`
 
-The top hit for each protein should probably be the original reference protein. If this is not the case, then that protein probably should not be used in phylogeny in the first place. Using the blast results, new alignments can be generated for each protein from the supermatrix and the reference protein. Each file is in fasta format and contains three sequences, the protein used in the supermatrix, the reference protein, and a row of the extracted heteropecilly scores from the supermatrix. The folder containing all of the files is automatically named (based on current time).
+The top hit for each protein should probably be the original reference protein. If this is not the case, then that protein probably should not be used in phylogeny in the first place. Using the blast results, new alignments can be generated for each protein from the supermatrix and the reference protein. Each file is in fasta format and contains three sequences, the protein used in the supermatrix (which has probably been trimmed), the reference protein, and a row of the extracted heteropecilly scores from the supermatrix. The folder containing all of the files is automatically named (based on current time).
 
 `blast_to_align_pairs.py -b simion2017_taxa/hsapiens_vs_uniprot_blastp.tab -q simion2017_taxa/Homo_sapiens.fasta.nogaps -s human_uniprot.fasta -r simion2017_taxa/Homo_sapiens.fasta -p hp_by_site_w_const.tab`
 
 This requires `mafft`, though could be modified to run another aligner.
+
+### for RAxML site-wise likelihoods ###
 
 Just as above, where an additional fasta line is generated for each alignment to show the heteropecilly scores, this can be used to show the difference in log-likelihood from `RAxML` using the `-l` option. This assumes that the relevant trees are the first two columns, and converts the difference into a hexadecimal value at each position, where no difference is 8, 9-f favor topology 1 and 0-7 favor topology 2.
 
@@ -167,6 +176,6 @@ Then, to sort out which proteins in the supermatrix have a structure, read in th
 
 The shell script will call `pdb_heteropecilly.py` for each PDB file in a directory, returning an error if that file is not there. This will recode the beta factors of each atom for each residue as heteropecilly scores. Heteropecilly color scheme can be visualized within Pymol, using the command in the console `run ~/git/pdbcolor/color_by_heteropecilly.py`
 
-Below is an example from 2o8b.pdb, which is the structure of the mismatch repair protein MSH2/MSH6 heterodimer. Heteropecilly scores were only calculated for MSH2, so the other protein is colored in pale gray. Gaps or missing data are dark gray, constant sites are green, and the colors follow the deciles as in the charts above. In this example, the DNA helix is colored yellow, to distinguish it from the protein. Several features are evident. Large sections of the alignment had been removed by trimming, resulting in gaps when compared to the reference protein, and dark gray regions throughout the protein. Constant sites form a distinct sector at the bottom of the image, possibly involved in the interface with MSH6. Many heteropecillious sites (red) appear to occur on the surface of the protein, perhaps directly interacting with the solvent or other proteins, though the extent of this was not precisely calculated. This may mean that, in general, heteropecillious sites and lineage-specific changes are a reflection of unique interactions *between* proteins.
+Below is an example from 2o8b.pdb, which is the structure of the mismatch repair protein MSH2/MSH6 heterodimer (see [Warren et al 2007 Structure of the human MutSalpha DNA lesion recognition complex.](https://www.ncbi.nlm.nih.gov/pubmed/?term=17531815)). Heteropecilly scores were only calculated for MSH2, so the other protein is colored in pale gray. Gaps or missing data are dark gray, constant sites are green, and the colors follow the deciles as in the charts above. In this example, the DNA helix is colored yellow, to distinguish it from the protein. Several features are evident. Large sections of the alignment had been removed by trimming, resulting in gaps when compared to the reference protein, and dark gray regions throughout the protein (long helix connecting the "clamp" domain to the ATPase domain). Constant sites form a distinct sector at the bottom of the image, primarily comprising the ATPase domain, probably also involved in the interface with MSH6. Many heteropecillious sites (red) appear to occur on the surface of the protein, perhaps directly interacting with the solvent or other proteins, though the extent of this was not precisely calculated. This may mean that, in general, heteropecillious sites and lineage-specific changes are a reflection of unique interactions *between* proteins.
 
 ![2o8b_w_hp.png](https://github.com/wrf/heteropecilly/blob/master/2o8b_w_hp.png)
