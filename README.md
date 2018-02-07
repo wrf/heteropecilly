@@ -137,7 +137,7 @@ These results can be summarized between multiple supermatrices. It is clear that
 
 Remarkably, even though the pipelines in each paper should be recovering single-copy genes (usually starting from genomes to find the orthologs, then adding transcriptomes to fill up the matrix), very few genes are actually shared between the three studies.
 
-![align_pairs_3-way_venn.png](https://github.com/wrf/heteropecilly/blob/master/align_pairs_3-way_venn.png)
+![align_pairs_3-way_venn.png](https://github.com/wrf/heteropecilly/blob/master/pair_stats/align_pairs_3-way_venn.png)
 
 ## amino_acid_distributions ##
 How do the constant sites compare to the rest of the sequences? Are the sequences that were chosen representative of all proteins? Because they were almost all trimmed to some degree, are they even representative of themselves? The frequency of each amino acid and gaps is counted for all taxa, as well as constant sites. Two reference files of the 1499 human proteins used in the alignments as well as all human proteins are also used to compared the frequencies.
