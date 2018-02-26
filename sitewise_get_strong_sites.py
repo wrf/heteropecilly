@@ -2,7 +2,7 @@
 #
 # sitewise_get_strong_sites.py  created 2018-02-01
 
-'''sitewise_get_strong_sites.py  last modified 2018-02-01
+'''sitewise_get_strong_sites.py  last modified 2018-02-24
     subset a supermatrix using only strong-sites identified by site-wise RAxML
 
 sitewise_get_strong_sites.py -a matrix1.aln -l RAxML_perSiteLLs.matrix1.tab -o strong_alignment.aln
@@ -19,7 +19,7 @@ import time
 import gzip
 from Bio import AlignIO
 
-def make_strong_alignment(fullalignment, alignformat, valsbysite, mindlnl):
+def make_strong_alignment(fullalignment, alignformat, valsbysite, mindlnl, makeweak):
 	'''read large alignment, and return a new alignment of only strong sites'''
 	if fullalignment.rsplit('.',1)[1]=="gz": # autodetect gzip format
 		opentype = gzip.open
@@ -33,13 +33,26 @@ def make_strong_alignment(fullalignment, alignformat, valsbysite, mindlnl):
 
 	print >> sys.stderr, "# Alignment contains {} taxa for {} sites, including gaps".format( numtaxa, allength )
 	strongcounter = 0
+	nullcounter = 0
 	newalign = alignedseqs[:,0:0] # start with blank alignment
 
 	for i in range(allength): # sites begin at 0 while lnl begins at 1
-		if valsbysite[i+1] >= mindlnl:
-			strongcounter += 1
+		if i>0 and i%10000==0:
+			sys.stderr.write(".")
+		if makeweak:
+			if valsbysite[i+1] >= mindlnl:
+				strongcounter += 1
+				continue
+			nullcounter += 1
 			newalign += alignedseqs[:,i:i+1]
-	print >> sys.stderr, "# New alignment contains {} strong sites".format( strongcounter )
+		else:
+			if valsbysite[i+1] >= mindlnl:
+				strongcounter += 1
+				newalign += alignedseqs[:,i:i+1]
+	if nullcounter:
+		print >> sys.stderr, "# New alignment contains {} weak sites, skipped {} strongs sites".format( nullcounter, strongcounter )
+	elif strongcounter:
+		print >> sys.stderr, "# New alignment contains {} strong sites".format( strongcounter )
 	return newalign
 
 def read_tabular_ln(lntabular, treelist):
@@ -72,11 +85,12 @@ def main(argv, wayout):
 	parser.add_argument('-m','--dlnl-minimum', default=0.5, type=float, help="minimum difference in lnL [0.5]")
 	parser.add_argument('-o','--output', help="name of output file", required=True)
 	parser.add_argument('-t','--trees', default="1,2", help="two columns of trees 1 and 2, as comma-separated ints [1,2]")
+	parser.add_argument('-w','--weak', action="store_true", help="get weak sites, meaning exclude strong sites")
 	args = parser.parse_args(argv)
 
 	treelist = [int(i) for i in args.trees.split(",")]
 	valsbysite = read_tabular_ln(args.log_likelihood, treelist)
-	strongalignment = make_strong_alignment(args.alignment, args.format, valsbysite, args.dlnl_minimum)
+	strongalignment = make_strong_alignment(args.alignment, args.format, valsbysite, args.dlnl_minimum, args.weak)
 	AlignIO.write(strongalignment, args.output, args.format)
 	print >> sys.stderr, "# New alignment written to {}".format(args.output), time.asctime()
 

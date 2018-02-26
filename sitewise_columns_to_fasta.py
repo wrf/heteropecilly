@@ -2,7 +2,7 @@
 
 # sitewise_columns_to_fasta.py
 
-'''sitewise_columns_to_fasta.py last modified 2018-02-02
+'''sitewise_columns_to_fasta.py last modified 2018-02-21
     convert tabular sitewise log-likelihood to a base16 FASTA string
 
 sitewise_columns_to_fasta.py RAxML_perSiteLLs.matrix1.tab > RAxML_perSiteLLs.matrix1.fasta
@@ -24,6 +24,10 @@ from collections import defaultdict
 if len(sys.argv) < 2:
 	print >> sys.stderr, __doc__
 else:
+	t1strongsites = 0
+	t2strongsites = 0
+	constsites = 0
+	totalsites = 0
 	fastastring = ""
 	for line in open(sys.argv[1],'r'):
 		line = line.strip()
@@ -31,18 +35,22 @@ else:
 			lsplits = line.split("\t")
 			if lsplits[0] == "site":
 				continue
+			totalsites += 1
 			if lsplits[1] == "const":
 				fastastring += "x"
+				constsites += 1
 			else:
 				dlnl = float(lsplits[1]) - float(lsplits[2])
 				absdlnl = abs(dlnl)
 				if absdlnl >= 0.5: # meaning above noise threshold
 					if dlnl > 0: # favors tree 1
+						t1strongsites += 1
 						if absdlnl < 1: # meaning between 0.5 and 1
 							adjdlnl = 9
 						else: # greater than 1
 							adjdlnl = dlnl + 9
 					elif dlnl < 0: # favors tree 2
+						t2strongsites += 1
 						if absdlnl < 1: # meaning between 0.5 and 1
 							adjdlnl = 6
 						else: # greater than 1, so add 6.99 so values are less than 6
@@ -58,3 +66,7 @@ else:
 				#lnl = int( float(lsplits[1]) - float(lsplits[2]) + 5) # was for base 10
 				fastastring += str(hexdlnl)
 	print >> sys.stdout, ">diffLnL\n{}".format(fastastring)
+	print >> sys.stderr, "{} T1, {} T2, {} constant, out of {} total sites".format( t1strongsites, t2strongsites, constsites, totalsites)
+
+
+
