@@ -2,7 +2,7 @@
 #
 # blast_to_align_pairs.py
 
-'''blast_to_align_pairs.py  last modified 2018-02-02
+'''blast_to_align_pairs.py  last modified 2018-03-05
 
 blast_to_align_pairs.py -q query_prots.fasta -s prot_db.fasta -b blastp.tab -d pair_dir -r Homo_sapiens.fasta
 
@@ -20,6 +20,7 @@ import os
 import argparse
 import time
 import subprocess
+from numpy import median
 from Bio import SeqIO,AlignIO
 from Bio.Seq import Seq
 
@@ -40,8 +41,8 @@ def read_tabular_hp(hptabular):
 	print >> sys.stderr, "# Found heteropecilly for {} sites".format( len(hpdict) ), time.asctime()
 	return hpdict
 
-def read_tabular_ln(lntabular):
-	'''read tabular log-likelihood results and return a dict where keys are position and value is dlnL'''
+def read_tabular_2ln(lntabular):
+	'''read tabular log-likelihood results and return a dict where keys are position and value is two-tree dlnL'''
 	lndict = {}
 	linecounter = 0
 	print >> sys.stderr, "# Reading log-likelihood by site from {}".format(lntabular), time.asctime()
@@ -78,6 +79,44 @@ def read_tabular_ln(lntabular):
 					adjdlnl = 0
 				hexdlnl = hex( int(adjdlnl) )[-1]
 				lndict[pos] = hexdlnl
+	print >> sys.stderr, "# Found log-likelihood for {} sites".format( len(lndict) ), time.asctime()
+	return lndict
+
+def read_tabular_3ln(lntabular):
+	'''read tabular log-likelihood results and return a dict where keys are position and value is three-tree dlnL'''
+	lndict = {}
+	linecounter = 0
+	print >> sys.stderr, "# Reading log-likelihood by site from {}".format(lntabular), time.asctime()
+	for line in open(lntabular,'r'):
+		line = line.strip()
+		if line and line[0]!="#": # ignore blank and comment lines
+			linecounter += 1
+			if linecounter < 2:
+				continue
+			lsplits = line.split('\t')
+			pos = int(lsplits[0])
+			if lsplits[1]=="const": # encode constants as x
+				lndict[pos] = "x"
+			else: # for all other sites, do the calculation
+				lnlfloats = [float(n) for n in lsplits[1:]]
+				# was calculated before as mean of T1-T2, T2-T3, T1-T3
+				# but should instead be max - median
+				# to avoid cases where min is much worse than max and med
+				dlnl = max(lnlfloats) - median(lnlfloats) # should always be greater than 0
+				toptree = lnlfloats.index(max(lnlfloats))
+				if dlnl < 0.5:
+					adjdlnl = 0
+				else: # meaning above noise threshold
+					if dlnl < 2.0: # strong site, not very strong
+						adjdlnl = 1
+					else: # very strong sites
+						adjdlnl = 2
+				adjdlnl = adjdlnl + (3 * toptree)
+				if adjdlnl >= 9:
+					adjdlnl = 9
+				elif adjdlnl <= 0:
+					adjdlnl = 0
+				lndict[pos] = str(adjdlnl)
 	print >> sys.stderr, "# Found log-likelihood for {} sites".format( len(lndict) ), time.asctime()
 	return lndict
 
@@ -199,7 +238,7 @@ def main(argv, wayout):
 		valsbysite = read_tabular_hp(args.heteropecilly)
 		fastascorestring = "Heteropecilly_score"
 	elif args.log_likelihood:
-		valsbysite = read_tabular_ln(args.log_likelihood)
+		valsbysite = read_tabular_3ln(args.log_likelihood)
 		fastascorestring = "Likelihood_score"
 
 	make_pairs_from_blast(args.blast, querydict, subjectdict, new_aln_dir, args.mafft, valsbysite, refdict, fastascorestring)
