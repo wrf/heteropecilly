@@ -2,8 +2,8 @@
 #
 # sitewise_recode_constant_sites.py  created 2018-02-02
 
-'''sitewise_recode_constant_sites.py  last modified 2018-02-02
-    recode constant sites as null from site-wise RAxML tabular output
+'''sitewise_recode_constant_sites.py  last modified 2018-03-12
+    recode constant sites as null from site-wise RAxML or phylobayes tabular output
 
 sitewise_recode_constant_sites.py -a matrix1.aln -l RAxML_perSiteLLs.matrix1.tab > RAxML_perSiteLLs.matrix1_w_const.tab
 
@@ -11,6 +11,10 @@ sitewise_recode_constant_sites.py -a matrix1.aln -l RAxML_perSiteLLs.matrix1.tab
 
     generate the tabular sitewise results using:
 sitewise_ll_to_columns.py RAxML_perSiteLLs.matrix1 > RAxML_perSiteLLs.matrix1.tab
+
+    tabular likelihood output (-l) is assumed to look like:
+site    T1      T2 ...
+1       -12.345 -12.456 ...
 '''
 
 import sys
