@@ -1,5 +1,7 @@
 # heteropecilly
-in depth analysis of heteropecillious sites in supermatrices
+**AS OF NOV 2022: this repo will probably not be updated again and no new data or analysis will be added**
+
+some in depth analysis of heteropecillious sites in supermatrices
 
 ## What is heteropecilly? ##
 Homopecilly and heteropecilly are concepts proposed by [Roure and Philippe (2011)](http://www.ncbi.nlm.nih.gov/pubmed/21235782), suggesting that the substitution matrix for each site may change uniquely in specific clades over evolutionary time. For instance, a position might accept only Asp and Glu in one clade, and only Asp and Asn in another.
